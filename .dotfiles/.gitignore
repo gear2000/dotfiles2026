@@ -1,0 +1,10 @@
+config/gh/hosts.yml
+config/**/credentials*
+config/**/*credential*
+config/**/*token*
+config/**/*secret*
+config/**/*session*
+config/**/*.log
+config/**/state.json
+config/**/*_state.json
+config/**/automatic_backups/
