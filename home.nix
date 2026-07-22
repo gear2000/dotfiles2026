@@ -1,8 +1,8 @@
-{ pkgs, user, ... }:
+{ pkgs, user, homeDirectory, ... }:
 
 {
   home.username = user;
-  home.homeDirectory = "/Users/${user}";
+  home.homeDirectory = homeDirectory;
   home.stateVersion = "24.11";
   home.packages = with pkgs; [
     # cli i use constantly

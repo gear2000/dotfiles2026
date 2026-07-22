@@ -1,32 +1,53 @@
 # dotfiles2026
 
-Portable macOS dotfiles managed with nix-darwin, Home Manager, nix-homebrew, and a repo-backed `.dotfiles/config` tree.
+Portable dotfiles managed with Nix.
 
-## Fresh machine
+- macOS: nix-darwin + Home Manager + nix-homebrew
+- Linux: standalone Home Manager for user-level packages and config
+- Shared config: repo-backed `.dotfiles/config` tree
+
+## Fresh macOS machine
 
 ```sh
 git clone git@github.com:gear2000/dotfiles2026.git ~/dotfiles2026
 cd ~/dotfiles2026
-./setup.sh --install-nix
+./setup.sh --macos --install-nix
 ```
 
 If Nix is already installed:
 
 ```sh
-./setup.sh
+./setup.sh --macos
+```
+
+## Fresh Linux machine
+
+```sh
+git clone git@github.com:gear2000/dotfiles2026.git ~/dotfiles2026
+cd ~/dotfiles2026
+./setup.sh --linux --install-nix
+```
+
+If Nix is already installed:
+
+```sh
+./setup.sh --linux
 ```
 
 The setup script detects:
 
-- current macOS username
-- Apple Silicon vs Intel Mac
+- current OS
+- current username
+- current home directory
+- CPU architecture / Nix host platform
 - whether Nix and `darwin-rebuild` are available
 
 It then:
 
 - creates `~/.dotfiles -> <repo>`
-- builds the flake with `DOTFILES_USER` and `DOTFILES_HOST_PLATFORM`
-- applies nix-darwin/Home Manager
+- builds the flake with `DOTFILES_USER`, `DOTFILES_HOME`, and `DOTFILES_HOST_PLATFORM`
+- applies nix-darwin/Home Manager on macOS
+- applies standalone Home Manager on Linux
 - syncs Neovim plugins with Lazy
 
 ## Update an existing machine
@@ -77,7 +98,18 @@ The flake defaults to `gary` and `aarch64-darwin` so plain local evaluation rema
 
 ```sh
 DOTFILES_USER="$USER"
-DOTFILES_HOST_PLATFORM="aarch64-darwin" # or x86_64-darwin
+DOTFILES_HOME="$HOME"
+DOTFILES_HOST_PLATFORM="aarch64-darwin" # x86_64-darwin, x86_64-linux, or aarch64-linux
 ```
 
 and invoke Nix with `--impure` so the same committed flake can be used across Macs.
+
+## Linux scope
+
+Linux support is intentionally user-level:
+
+- installs Home Manager packages such as `neovim`, `ripgrep`, `fd`, `fzf`, `jq`, and `lazygit`
+- manages shell config, Starship, autosuggestions, syntax highlighting, and shared `~/.config` files
+- does not configure system services, NixOS modules, display managers, drivers, sudo, or distro package managers
+
+That keeps `./setup.sh --linux` safe to run on ordinary Linux distributions with Nix installed.

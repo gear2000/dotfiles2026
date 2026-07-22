@@ -6,32 +6,41 @@ usage() {
 }
 
 # Usage:
-#   ./setup.sh [--user USER] [--host-platform aarch64-darwin|x86_64-darwin] [--install-nix] [--no-switch] [--no-nvim-sync]
+#   ./setup.sh [--macos|--linux] [--user USER] [--host-platform PLATFORM] [--install-nix] [--no-switch] [--no-nvim-sync]
 #
 # Fresh-machine bootstrap for this dotfiles repo.
 #
 # What it does:
-#   1. Detects macOS username and CPU architecture.
+#   1. Detects OS, username, home directory, and CPU architecture.
 #   2. Optionally installs Determinate Nix when Nix is missing.
 #   3. Creates ~/.dotfiles -> this repo for a stable local path.
-#   4. Builds the nix-darwin/Home Manager system.
-#   5. Applies it with darwin-rebuild switch unless --no-switch is passed.
+#   4. On macOS, builds/applies nix-darwin + Home Manager.
+#   5. On Linux, builds/applies standalone Home Manager.
 #   6. Syncs Neovim plugins with Lazy unless --no-nvim-sync is passed.
 #
 # Notes:
-#   - This repo is macOS-focused. Linux/WSL are intentionally not handled here.
-#   - If Nix is missing, pass --install-nix to run the official Determinate installer.
+#   - If Nix is missing, pass --install-nix to run the Determinate Nix installer.
 #   - Existing Home Manager-managed file conflicts are backed up with .hm-backup.
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 dotfiles_user="${USER:-$(id -un)}"
+dotfiles_home="${HOME:-}"
 host_platform=""
+target_os=""
 install_nix=0
 do_switch=1
 do_nvim_sync=1
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --macos|--darwin)
+      target_os="Darwin"
+      shift
+      ;;
+    --linux)
+      target_os="Linux"
+      shift
+      ;;
     --user)
       dotfiles_user="${2:?missing value for --user}"
       shift 2
@@ -64,31 +73,62 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ "$(uname -s)" != "Darwin" ]; then
-  echo "This setup currently supports macOS only." >&2
+detected_os="$(uname -s)"
+if [ -z "$target_os" ]; then
+  target_os="$detected_os"
+fi
+
+case "$target_os" in
+  Darwin|Linux) ;;
+  *)
+    echo "Unsupported target OS: $target_os" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$target_os" != "$detected_os" ]; then
+  echo "Requested $target_os but this machine reports $detected_os." >&2
   exit 1
 fi
 
 if [ -z "$host_platform" ]; then
-  case "$(uname -m)" in
-    arm64) host_platform="aarch64-darwin" ;;
-    x86_64) host_platform="x86_64-darwin" ;;
+  case "$target_os:$(uname -m)" in
+    Darwin:arm64) host_platform="aarch64-darwin" ;;
+    Darwin:x86_64) host_platform="x86_64-darwin" ;;
+    Linux:x86_64) host_platform="x86_64-linux" ;;
+    Linux:aarch64|Linux:arm64) host_platform="aarch64-linux" ;;
     *)
-      echo "Unsupported macOS architecture: $(uname -m)" >&2
+      echo "Unsupported architecture: $target_os $(uname -m)" >&2
       exit 1
       ;;
   esac
 fi
 
 case "$host_platform" in
-  aarch64-darwin|x86_64-darwin) ;;
+  aarch64-darwin|x86_64-darwin|x86_64-linux|aarch64-linux) ;;
   *)
     echo "Unsupported host platform: $host_platform" >&2
     exit 1
     ;;
 esac
 
-if ! xcode-select -p >/dev/null 2>&1; then
+case "$target_os:$host_platform" in
+  Darwin:*-darwin|Linux:*-linux) ;;
+  *)
+    echo "Host platform $host_platform does not match target OS $target_os." >&2
+    exit 1
+    ;;
+esac
+
+if [ -z "$dotfiles_home" ]; then
+  if [ "$target_os" = "Darwin" ]; then
+    dotfiles_home="/Users/${dotfiles_user}"
+  else
+    dotfiles_home="/home/${dotfiles_user}"
+  fi
+fi
+
+if [ "$target_os" = "Darwin" ] && ! xcode-select -p >/dev/null 2>&1; then
   echo "Command Line Tools are missing. Run this, then rerun setup:"
   echo "  xcode-select --install"
   exit 1
@@ -115,30 +155,44 @@ if ! command -v nix >/dev/null 2>&1; then
   exit 1
 fi
 
-ln -sfn "$repo_dir" "/Users/${dotfiles_user}/.dotfiles"
+ln -sfn "$repo_dir" "${dotfiles_home}/.dotfiles"
 
 export DOTFILES_USER="$dotfiles_user"
 export DOTFILES_HOST_PLATFORM="$host_platform"
+export DOTFILES_HOME="$dotfiles_home"
 
 echo "Dotfiles repo:       $repo_dir"
+echo "Target OS:           $target_os"
 echo "User:                $DOTFILES_USER"
+echo "Home:                $DOTFILES_HOME"
 echo "Host platform:       $DOTFILES_HOST_PLATFORM"
-echo "Stable symlink:      /Users/${dotfiles_user}/.dotfiles -> $repo_dir"
+echo "Stable symlink:      ${dotfiles_home}/.dotfiles -> $repo_dir"
 
 nix --extra-experimental-features 'nix-command flakes' flake check "$repo_dir" --impure
 
-if command -v darwin-rebuild >/dev/null 2>&1; then
-  darwin_rebuild=(darwin-rebuild)
-else
-  darwin_rebuild=(nix --extra-experimental-features 'nix-command flakes' run github:nix-darwin/nix-darwin/nix-darwin-26.05#darwin-rebuild --)
-fi
+if [ "$target_os" = "Darwin" ]; then
+  if command -v darwin-rebuild >/dev/null 2>&1; then
+    darwin_rebuild=(darwin-rebuild)
+  else
+    darwin_rebuild=(nix --extra-experimental-features 'nix-command flakes' run github:nix-darwin/nix-darwin/nix-darwin-26.05#darwin-rebuild --)
+  fi
 
-"${darwin_rebuild[@]}" build --flake "$repo_dir#mac" --impure
+  "${darwin_rebuild[@]}" build --flake "$repo_dir#mac" --impure
 
-if [ "$do_switch" -eq 1 ]; then
-  sudo "${darwin_rebuild[@]}" switch --flake "$repo_dir#mac" --impure
+  if [ "$do_switch" -eq 1 ]; then
+    sudo "${darwin_rebuild[@]}" switch --flake "$repo_dir#mac" --impure
+  else
+    echo "Skipped switch because --no-switch was passed."
+  fi
 else
-  echo "Skipped switch because --no-switch was passed."
+  home_manager=(nix --extra-experimental-features 'nix-command flakes' run github:nix-community/home-manager/release-26.05 --)
+  "${home_manager[@]}" --flake "$repo_dir#${dotfiles_user}" --impure --no-out-link build
+
+  if [ "$do_switch" -eq 1 ]; then
+    "${home_manager[@]}" --flake "$repo_dir#${dotfiles_user}" --impure -b hm-backup switch
+  else
+    echo "Skipped switch because --no-switch was passed."
+  fi
 fi
 
 if [ "$do_nvim_sync" -eq 1 ]; then

@@ -1,4 +1,4 @@
-{ user, hostPlatform, ... }:
+{ user, hostPlatform, homeDirectory, ... }:
 
 {
   # Determinate already manages the Nix daemon, so nix-darwin shouldn't.
@@ -9,7 +9,7 @@
 
   system.primaryUser = user;
   users.users.${user} = {
-    home = "/Users/${user}";
+    home = homeDirectory;
   };
   system.stateVersion = 6;
 
