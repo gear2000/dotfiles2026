@@ -36,15 +36,37 @@
   };
   homebrew = {
     enable = true;
-    onActivation.cleanup = "zap";  # remove anything not listed here
+    # Keep Homebrew synced to this list without zapping app data/settings.
+    onActivation.cleanup = "uninstall";
     onActivation.autoUpdate = true;
-    onActivation.extraFlags = [ "--force" ];
+    taps = [
+      "datadog-labs/pack"
+    ];
     brews = [
+      "ack"
+      "argocd"
+      "datadog-labs/pack/pup"
+      "gh"
+      "go"
+      "helm"
       "herdr"
+      "infracost"
+      "just"
+      "kubie"
+      "node"
+      "opentofu"
+      "pipx"
+      "tmux"
+      "tree"
+      "uv"
+      "watch"
     ];
     casks = [
-      "wezterm"
       "claude-code"
+      "keka"
+      "microsoft-remote-desktop"
+      "wezterm"
+      "xquartz"
     ];
   };
 }

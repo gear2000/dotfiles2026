@@ -13,6 +13,8 @@
     lazygit
     neovim
     # terminal fonts
+    freerdp
+    # the font everything renders in
     nerd-fonts.hack
     nerd-fonts.jetbrains-mono
   ]) ++ lib.optionals pkgs.stdenv.isLinux [
