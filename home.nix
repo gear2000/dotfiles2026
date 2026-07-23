@@ -40,12 +40,14 @@
 
   # Ubuntu's default ~/.bashrc sources this file, so Bash gets the same
   # shortcuts without Home Manager replacing the machine-specific ~/.bashrc.
-  home.file.".bash_aliases".text = ''
-    alias main='git switch main'
-    alias cc='claude --dangerously-skip-permissions'
-    alias co='codex --full-auto'
-    alias ca='agent --yolo'
-  '';
+  home.file.".bash_aliases" = lib.mkIf pkgs.stdenv.isLinux {
+    text = ''
+      alias main='git switch main'
+      alias cc='claude --dangerously-skip-permissions'
+      alias co='codex --full-auto'
+      alias ca='agent --yolo'
+    '';
+  };
 
   programs.starship = {
     enable = true;
