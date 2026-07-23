@@ -108,8 +108,9 @@ and invoke Nix with `--impure` so the same committed flake can be used across Ma
 
 Linux support is intentionally user-level:
 
-- installs Home Manager packages such as `neovim`, `ripgrep`, `fd`, `fzf`, `jq`, and `lazygit`
-- manages shell config, Starship, autosuggestions, syntax highlighting, and shared `~/.config` files
+- installs Home Manager packages such as `neovim`, `wezterm`, `ripgrep`, `fd`, `fzf`, `jq`, and `lazygit`
+- manages shared Bash aliases through `~/.bash_aliases`, plus Zsh config, Starship, autosuggestions, and syntax highlighting
+- manages shared `~/.config` files
 - does not configure system services, NixOS modules, display managers, drivers, sudo, or distro package managers
 
 That keeps `./setup.sh --linux` safe to run on ordinary Linux distributions with Nix installed.

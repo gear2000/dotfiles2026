@@ -1,10 +1,10 @@
-{ pkgs, user, homeDirectory, ... }:
+{ lib, pkgs, user, homeDirectory, ... }:
 
 {
   home.username = user;
   home.homeDirectory = homeDirectory;
   home.stateVersion = "24.11";
-  home.packages = with pkgs; [
+  home.packages = (with pkgs; [
     # cli i use constantly
     ripgrep   # fast search
     fd        # fast find
@@ -12,8 +12,11 @@
     jq        # json on the command line
     lazygit
     neovim
-    # the font everything renders in
+    # terminal fonts
     nerd-fonts.hack
+    nerd-fonts.jetbrains-mono
+  ]) ++ lib.optionals pkgs.stdenv.isLinux [
+    pkgs.wezterm
   ];
   fonts.fontconfig.enable = true;
   home.sessionVariables.EDITOR = "nvim";
@@ -34,6 +37,15 @@
       ca = "agent --yolo";
     };
   };
+
+  # Ubuntu's default ~/.bashrc sources this file, so Bash gets the same
+  # shortcuts without Home Manager replacing the machine-specific ~/.bashrc.
+  home.file.".bash_aliases".text = ''
+    alias main='git switch main'
+    alias cc='claude --dangerously-skip-permissions'
+    alias co='codex --full-auto'
+    alias ca='agent --yolo'
+  '';
 
   programs.starship = {
     enable = true;
