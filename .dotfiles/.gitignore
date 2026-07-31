@@ -1,4 +1,5 @@
 config/gh/hosts.yml
+config/herdr/
 config/**/credentials*
 config/**/*credential*
 config/**/*token*

@@ -68,7 +68,6 @@
   home.file.".config/nvim".source = ./.dotfiles/config/nvim;
   home.file.".config/git/ignore".source = ./.dotfiles/config/git/ignore;
   home.file.".config/cmux/cmux.json".source = ./.dotfiles/config/cmux/cmux.json;
-  home.file.".config/herdr/config.toml".source = ./.dotfiles/config/herdr/config.toml;
   home.file.".config/karabiner/karabiner.json".source = ./.dotfiles/config/karabiner/karabiner.json;
   home.file.".config/opencode/commands/plannotator-annotate.md".source = ./.dotfiles/config/opencode/commands/plannotator-annotate.md;
   home.file.".config/opencode/commands/plannotator-last.md".source = ./.dotfiles/config/opencode/commands/plannotator-last.md;

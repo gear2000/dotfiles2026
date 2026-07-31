@@ -78,7 +78,6 @@ git pull
     └── config/
         ├── cmux/
         ├── git/
-        ├── herdr/
         ├── karabiner/
         ├── nvim/
         ├── opencode/

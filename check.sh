@@ -15,6 +15,14 @@ export DOTFILES_USER="${DOTFILES_USER:-${USER:-gary}}"
 export DOTFILES_HOST_PLATFORM="${DOTFILES_HOST_PLATFORM:-$default_host_platform}"
 export DOTFILES_HOME="${DOTFILES_HOME:-$HOME}"
 
+# Ownership guard: LLM-harness config paths belong to llm-config-setup, never
+# home-manager — HM force-replaces managed paths on every switch and would
+# clobber files that kit deploys (e.g. ~/.claude/settings.json, herdr config).
+if grep -nE '\.claude|\.pi/|\.codex|\.agents/skills|herdr' "$repo_dir/home.nix"; then
+  echo "ERROR: home.nix declares an LLM-harness path owned by llm-config-setup (see matches above)" >&2
+  exit 1
+fi
+
 nix --extra-experimental-features 'nix-command flakes' flake check "$repo_dir" --impure
 
 case "$DOTFILES_HOST_PLATFORM" in
