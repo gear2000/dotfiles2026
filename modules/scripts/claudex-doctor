@@ -1,0 +1,43 @@
+set -euo pipefail
+
+readonly proxy_url="http://127.0.0.1:8317"
+readonly local_token="claudex-loopback"
+model="${1:-gpt-5.6-sol}"
+
+if (( $# > 1 )); then
+  echo "usage: claudex-doctor [model]" >&2
+  exit 2
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "claudex-doctor: claude is not installed or not on PATH" >&2
+  exit 1
+fi
+
+if ! command -v cli-proxy-api >/dev/null 2>&1; then
+  echo "claudex-doctor: cli-proxy-api is not installed or not on PATH" >&2
+  exit 1
+fi
+
+models_json="$(curl --fail --silent --show-error --max-time 5 \
+  --header "Authorization: Bearer $local_token" \
+  "$proxy_url/v1/models")" || {
+  echo "claudex-doctor: CLIProxyAPI is unavailable at $proxy_url" >&2
+  exit 1
+}
+
+shopt -s nullglob
+codex_auth_files=("$HOME"/.cli-proxy-api/codex-*.json)
+if (( ${#codex_auth_files[@]} == 0 )); then
+  echo "claudex-doctor: no Codex OAuth session; run claudex-login" >&2
+  exit 1
+fi
+
+if ! jq --exit-status --arg model "$model" \
+  '.data | arrays | any(.[]; .id == $model)' \
+  >/dev/null <<<"$models_json"; then
+  echo "claudex-doctor: model '$model' is not available from CLIProxyAPI" >&2
+  exit 1
+fi
+
+printf 'claudex-doctor: ok; CLIProxyAPI advertises %s\n' "$model"

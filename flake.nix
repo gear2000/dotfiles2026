@@ -12,9 +12,12 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+
+    llm-agents.url = "github:numtide/llm-agents.nix";
+    llm-agents.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs }:
+  outputs = inputs@{ self, nix-darwin, nix-homebrew, home-manager, nixpkgs, llm-agents }:
     let
       envUser = builtins.getEnv "DOTFILES_USER";
       envHostPlatform = builtins.getEnv "DOTFILES_HOST_PLATFORM";
@@ -37,6 +40,7 @@
       linuxPkgs = import nixpkgs {
         system = hostPlatform;
         config.allowUnfree = true;
+        overlays = [ llm-agents.overlays.shared-nixpkgs ];
       };
     in
     {
@@ -51,6 +55,7 @@
           nix-homebrew.darwinModules.nix-homebrew
           home-manager.darwinModules.home-manager
           {
+            nixpkgs.overlays = [ llm-agents.overlays.shared-nixpkgs ];
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.backupFileExtension = "hm-backup";

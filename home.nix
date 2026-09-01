@@ -1,6 +1,8 @@
 { lib, pkgs, user, homeDirectory, ... }:
 
 {
+  imports = [ ./modules/claudex.nix ];
+
   home.username = user;
   home.homeDirectory = homeDirectory;
   home.stateVersion = "24.11";
