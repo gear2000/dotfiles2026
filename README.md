@@ -171,6 +171,6 @@ Linux support is intentionally user-level:
 - on Ubuntu/Debian, manages shared Bash aliases through the `~/.bash_aliases` file sourced by the default `~/.bashrc`
 - manages Zsh config, Starship, autosuggestions, and syntax highlighting
 - manages shared `~/.config` files
-- does not configure system services, NixOS modules, display managers, drivers, sudo, or distro package managers
+- does not configure system-level services, NixOS modules, display managers, drivers, sudo, or distro package managers
 
 That keeps `./setup.sh --linux` safe to run on ordinary Linux distributions with Nix installed.

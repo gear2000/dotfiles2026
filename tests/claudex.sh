@@ -129,6 +129,7 @@ bash "$repo_dir/modules/scripts/claudex-login" --help | grep -F \
 
 # Locked public safety settings and both user-service implementations remain
 # visible to this focused check even when only one OS can build locally.
+# shellcheck disable=SC2016
 grep -F 'host: "${proxyHost}"' "$repo_dir/modules/claudex.nix"
 grep -F 'proxyHost = "127.0.0.1"' "$repo_dir/modules/claudex.nix"
 grep -F 'allow-remote: false' "$repo_dir/modules/claudex.nix"

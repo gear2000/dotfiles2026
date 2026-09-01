@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -euo pipefail
 
 readonly proxy_url="http://127.0.0.1:8317"
