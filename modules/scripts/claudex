@@ -1,0 +1,82 @@
+# shellcheck shell=bash
+set -euo pipefail
+
+readonly proxy_url="http://127.0.0.1:8317"
+readonly local_token="claudex-loopback"
+model="gpt-5.6-sol"
+
+# A non-option first argument is ClaudeX's optional model selector. Put `--`
+# first when the native Claude positional prompt should use the default model.
+if (( $# > 0 )) && [[ "$1" != -* ]]; then
+  model="$1"
+  shift
+fi
+
+# Native --model and --effort flags are forwarded once, unchanged. Their values
+# also drive preflight and the subagent model. Stop parsing at native `--`.
+has_model=false
+has_effort=false
+expect=""
+for arg in "$@"; do
+  if [[ -n "$expect" ]]; then
+    if [[ "$arg" == -* ]]; then
+      echo "claudex: --$expect requires a value" >&2
+      exit 2
+    fi
+    case "$expect" in
+      model) model="$arg"; has_model=true ;;
+      effort) has_effort=true ;;
+    esac
+    expect=""
+    continue
+  fi
+  case "$arg" in
+    --) break ;;
+    --model) expect="model" ;;
+    --model=*) model="${arg#--model=}"; has_model=true ;;
+    --effort) expect="effort" ;;
+    --effort=*) has_effort=true ;;
+  esac
+done
+if [[ -n "$expect" ]]; then
+  echo "claudex: --$expect requires a value" >&2
+  exit 2
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "claudex: claude is not installed or not on PATH" >&2
+  exit 1
+fi
+
+models_json="$(curl --fail --silent --show-error --max-time 5 \
+  --header "Authorization: Bearer $local_token" \
+  "$proxy_url/v1/models")" || {
+  echo "claudex: CLIProxyAPI is unavailable at $proxy_url" >&2
+  exit 1
+}
+
+if ! jq --exit-status --arg model "$model" \
+  '.data | arrays | any(.[]; .id == $model)' \
+  >/dev/null <<<"$models_json"; then
+  echo "claudex: model '$model' is not available from CLIProxyAPI" >&2
+  exit 1
+fi
+
+export ANTHROPIC_BASE_URL="$proxy_url"
+# This token authenticates only to the loopback proxy. It is not an upstream
+# account credential.
+export ANTHROPIC_AUTH_TOKEN="$local_token"
+export CLAUDE_CODE_SUBAGENT_MODEL="$model"
+export CLAUDE_CODE_ALWAYS_ENABLE_EFFORT=1
+export CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY=3
+export ENABLE_TOOL_SEARCH=false
+
+prefix=()
+if ! $has_model; then
+  prefix+=(--model "$model")
+fi
+if ! $has_effort; then
+  prefix+=(--effort high)
+fi
+
+exec claude "${prefix[@]}" "$@"

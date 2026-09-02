@@ -1,0 +1,32 @@
+# shellcheck shell=bash
+set -euo pipefail
+
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+config_path="$config_home/cli-proxy-api/config.yaml"
+
+if ! command -v cli-proxy-api >/dev/null 2>&1; then
+  echo "claudex-login: cli-proxy-api is not installed or not on PATH" >&2
+  exit 1
+fi
+
+login_flag="--codex-device-login"
+case "${1:-}" in
+  --browser)
+    login_flag="--codex-login"
+    shift
+    ;;
+  --device)
+    shift
+    ;;
+  --help|-h)
+    printf '%s\n' 'usage: claudex-login [--device|--browser] [cli-proxy-api options]'
+    printf '%s\n' '  --device   show a code usable from any browser (default)'
+    printf '%s\n' '  --browser  open a browser and wait for a localhost callback'
+    exit 0
+    ;;
+esac
+
+if [[ "$login_flag" == "--codex-device-login" ]]; then
+  exec cli-proxy-api --config "$config_path" "$login_flag" --no-browser "$@"
+fi
+exec cli-proxy-api --config "$config_path" "$login_flag" "$@"

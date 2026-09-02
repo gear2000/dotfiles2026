@@ -64,6 +64,61 @@ git pull
 ./check.sh
 ```
 
+## ClaudeX (Claude Code through Codex OAuth)
+
+Home Manager installs [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)
+and three wrappers. It also starts a per-user proxy on `127.0.0.1:8317`.
+Remote management and the management control panel are disabled. The committed
+configuration contains no upstream credentials. Its fixed client marker is not
+a secret; the loopback bind is the access boundary. OAuth state is created only
+in `~/.cli-proxy-api/`.
+
+After rebuilding, authorize CLIProxyAPI with Codex:
+
+```sh
+claudex-login             # device code; works locally and over SSH
+claudex-login --browser   # optional local-browser callback flow
+```
+
+The default prints a short-lived code to enter at OpenAI's device-login page,
+so the shell and browser do not need to be on the same machine. Never copy the
+resulting files, terminal output, tokens, or account details into this
+repository. Check the service and required model afterward:
+
+```sh
+claudex-doctor                 # checks gpt-5.6-sol
+claudex-doctor another-model   # checks an explicit model
+```
+
+Use ClaudeX with its default model or an optional first model argument. All
+remaining arguments are passed to Claude Code unchanged; put `--` first when a
+positional prompt should use the default model:
+
+```sh
+claudex --dangerously-skip-permissions
+claudex gpt-5.6-sol --effort max -p "Summarize this repository"
+claudex -- "Start with README.md"
+```
+
+`claudex` refuses to launch if `claude` is missing, the proxy is stopped, or
+the selected model is absent from `/v1/models`. It sets the loopback gateway,
+main model, subagent model, proxy effort support, tool concurrency of three, and
+upfront tool loading only for the child process. It adds `--effort high` when no
+effort flag was supplied, then uses `exec`. A native flag such as `--effort max`
+is forwarded once and remains effective. The raw `claude` command and shell
+environment are unchanged and continue to use Anthropic normally.
+
+To stop the proxy temporarily:
+
+```sh
+systemctl --user stop cli-proxy-api                    # Linux
+launchctl bootout "gui/$UID/org.nix-community.home.cli-proxy-api" # macOS
+```
+
+A later Home Manager activation starts it again. To disable ClaudeX
+persistently, remove `./modules/claudex.nix` from `home.nix`'s `imports`, rebuild,
+and remove local state separately if desired. Never add that state to Git.
+
 ## Repo layout
 
 ```text
@@ -71,6 +126,11 @@ git pull
 ├── flake.nix
 ├── configuration.nix
 ├── home.nix
+├── modules/
+│   ├── claudex.nix
+│   └── scripts/
+├── tests/
+│   └── claudex.sh
 ├── setup.sh
 ├── rebuild.sh
 ├── check.sh
@@ -111,6 +171,6 @@ Linux support is intentionally user-level:
 - on Ubuntu/Debian, manages shared Bash aliases through the `~/.bash_aliases` file sourced by the default `~/.bashrc`
 - manages Zsh config, Starship, autosuggestions, and syntax highlighting
 - manages shared `~/.config` files
-- does not configure system services, NixOS modules, display managers, drivers, sudo, or distro package managers
+- does not configure system-level services, NixOS modules, display managers, drivers, sudo, or distro package managers
 
 That keeps `./setup.sh --linux` safe to run on ordinary Linux distributions with Nix installed.
