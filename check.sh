@@ -16,6 +16,8 @@ export DOTFILES_HOST_PLATFORM="${DOTFILES_HOST_PLATFORM:-$default_host_platform}
 export DOTFILES_HOME="${DOTFILES_HOME:-$HOME}"
 
 "$repo_dir/tests/claudex.sh"
+"$repo_dir/tests/backup-report.sh"
+"$repo_dir/tests/local-overrides.sh"
 
 # Ownership guard: LLM-harness config paths belong to llm-config-setup, never
 # home-manager — HM force-replaces managed paths on every switch and would
@@ -57,3 +59,5 @@ XDG_CONFIG_HOME="$repo_dir/.dotfiles/config" \
 	XDG_STATE_HOME="$tmp_root/state" \
 	XDG_CACHE_HOME="$tmp_root/cache" \
 	nvim --headless '+Lazy! sync' '+qa'
+
+NVIM_TEST_DATA_HOME="$tmp_root/data" "$repo_dir/tests/nvim-local.sh"

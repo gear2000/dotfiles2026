@@ -21,10 +21,47 @@ usage() {
 # Notes:
 #   - If Nix is missing, pass --install-nix to run the Determinate Nix installer.
 #   - Existing Home Manager-managed file conflicts are backed up with .hm-backup.
+#     After a switch, any newly created backup is listed with a restore hint.
+#   - Machine-local shell overrides belong in ~/.zshrc.local and
+#     ~/.bash_aliases.local; Home Manager never touches those files.
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-dotfiles_user="${USER:-$(id -un)}"
 dotfiles_home="${HOME:-}"
+
+# List the .hm-backup paths that currently exist for every Home Manager-managed
+# file, derived from the flake rather than by walking $HOME (a walk aborts under
+# pipefail on the first unreadable directory, e.g. macOS-protected folders).
+snapshot_backups() {
+  local attr="$1" names
+  names="$(nix --extra-experimental-features 'nix-command flakes' eval --impure --json \
+    "$repo_dir#${attr}.config.home.file" --apply builtins.attrNames 2>/dev/null)" || return 0
+  printf '%s' "$names" | jq -r '.[] | sub("^\\./"; "")' | sort -u | while IFS= read -r key; do
+    [ -n "$key" ] || continue
+    if [ -e "${dotfiles_home}/${key}.hm-backup" ]; then
+      printf '%s\n' "${dotfiles_home}/${key}.hm-backup"
+    fi
+  done
+}
+
+# Print backups present in the after-list but not the before-list.
+# Known blind spot: a second backup of the same path overwrites the earlier
+# .hm-backup in place and does not show up here.
+report_new_backups() {
+  local before="$1" after="$2" new
+  new="$(comm -13 "$before" "$after")"
+  [ -n "$new" ] || return 0
+  echo
+  echo "Home Manager replaced these files and kept a backup:"
+  printf '  %s\n' $new
+  echo "Merge the parts you still need into ~/.zshrc.local or ~/.bash_aliases.local."
+  echo "Those files are never managed, so they survive every future switch."
+}
+
+if [ "${SETUP_SH_LIB_ONLY:-0}" = 1 ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
+dotfiles_user="${USER:-$(id -un)}"
 host_platform=""
 target_os=""
 install_nix=0
@@ -171,6 +208,16 @@ echo "Stable symlink:      ${dotfiles_home}/.dotfiles -> $repo_dir"
 nix --extra-experimental-features 'nix-command flakes' flake check "$repo_dir" --impure
 
 if [ "$target_os" = "Darwin" ]; then
+  hm_attr="darwinConfigurations.mac.config.home-manager.users.${dotfiles_user}"
+else
+  hm_attr="homeConfigurations.${dotfiles_user}"
+fi
+backups_before="$(mktemp)"
+backups_after="$(mktemp)"
+trap 'rm -f "$backups_before" "$backups_after"' EXIT
+snapshot_backups "$hm_attr" >"$backups_before"
+
+if [ "$target_os" = "Darwin" ]; then
   if command -v darwin-rebuild >/dev/null 2>&1; then
     darwin_rebuild=(darwin-rebuild)
   else
@@ -181,6 +228,8 @@ if [ "$target_os" = "Darwin" ]; then
 
   if [ "$do_switch" -eq 1 ]; then
     sudo "${darwin_rebuild[@]}" switch --flake "$repo_dir#mac" --impure
+    snapshot_backups "$hm_attr" >"$backups_after"
+    report_new_backups "$backups_before" "$backups_after"
   else
     echo "Skipped switch because --no-switch was passed."
   fi
@@ -190,6 +239,8 @@ else
 
   if [ "$do_switch" -eq 1 ]; then
     "${home_manager[@]}" --flake "$repo_dir#${dotfiles_user}" --impure -b hm-backup switch
+    snapshot_backups "$hm_attr" >"$backups_after"
+    report_new_backups "$backups_before" "$backups_after"
   else
     echo "Skipped switch because --no-switch was passed."
   fi

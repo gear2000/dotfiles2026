@@ -119,6 +119,32 @@ A later Home Manager activation starts it again. To disable ClaudeX
 persistently, remove `./modules/claudex.nix` from `home.nix`'s `imports`, rebuild,
 and remove local state separately if desired. Never add that state to Git.
 
+## Machine-local overrides
+
+Home Manager owns `~/.zshrc`, `~/.zshenv`, `~/.bash_aliases` (Linux), and all of
+`~/.config/nvim`. On every switch it replaces those with store symlinks and keeps
+a pre-existing file as `<file>.hm-backup`, which nothing sources afterwards.
+Keep per-machine aliases, functions, and settings in these files instead. They are
+never declared in `home.nix`, so a switch never touches them:
+
+| File | Loaded by |
+|------|-----------|
+| `~/.zshrc.local` | last line of the managed `.zshrc`, after repo aliases, so local definitions win |
+| `~/.bash_aliases.local` | last line of the managed `.bash_aliases` (Linux) |
+| `~/.config/nvim-local/lua/local.lua` | end of `init.lua`, after plugins load; options and keymaps only, no new plugins |
+
+After each switch, `setup.sh` prints any newly created `.hm-backup` file with a
+restore hint. Blind spot: if the same path is backed up twice, the second backup
+overwrites the first and is not reported. `tests/local-overrides.sh` fails the
+build if the source lines disappear or a managed entry claims one of these paths.
+
+To recover something a past switch hid, look in the backup and move it over:
+
+```sh
+grep -n awsuse ~/.zshrc.hm-backup ~/.zshenv.hm-backup 2>/dev/null
+# then paste the function into ~/.zshrc.local and open a new shell
+```
+
 ## Repo layout
 
 ```text
@@ -130,7 +156,10 @@ and remove local state separately if desired. Never add that state to Git.
 │   ├── claudex.nix
 │   └── scripts/
 ├── tests/
-│   └── claudex.sh
+│   ├── backup-report.sh
+│   ├── claudex.sh
+│   ├── local-overrides.sh
+│   └── nvim-local.sh
 ├── setup.sh
 ├── rebuild.sh
 ├── check.sh

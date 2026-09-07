@@ -29,11 +29,19 @@
     enable = true;
     autosuggestion.enable = true;      # ghost text from history
     syntaxHighlighting.enable = true;  # commands turn green when valid
-    initContent = ''
-      export PATH="$HOME/.local/bin:$PATH"
+    # Machine-local overrides live in ~/.zshrc.local, which Home Manager never
+    # declares. Order 1500 places the source line after aliases (1100) and
+    # syntax highlighting (1200), so local definitions win.
+    initContent = lib.mkMerge [
+      ''
+        export PATH="$HOME/.local/bin:$PATH"
 
-      bindkey '^f' autosuggest-accept
-    '';
+        bindkey '^f' autosuggest-accept
+      ''
+      (lib.mkOrder 1500 ''
+        [ -r "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
+      '')
+    ];
     shellAliases = {
       main = "git switch main";
       cc = "claude --dangerously-skip-permissions";
@@ -50,6 +58,7 @@
       alias cc='claude --dangerously-skip-permissions'
       alias co='codex --full-auto'
       alias ca='agent --yolo'
+      [ -r "$HOME/.bash_aliases.local" ] && . "$HOME/.bash_aliases.local"
     '';
   };
 
