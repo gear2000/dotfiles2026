@@ -63,7 +63,9 @@
               inherit user;
               homeDirectory = darwinHomeDirectory;
             };
-            home-manager.users.${user} = import ./home.nix;
+            # Herdr is imported here, not from home.nix: check.sh keeps home.nix free
+            # of LLM-harness paths, and this module installs only the pinned binary.
+            home-manager.users.${user} = { imports = [ ./home.nix ./modules/herdr.nix ]; };
           }
         ];
       };
@@ -73,6 +75,7 @@
         extraSpecialArgs = { inherit user homeDirectory; };
         modules = [
           ./home.nix
+          ./modules/herdr.nix
           {
             home.enableNixpkgsReleaseCheck = false;
           }
