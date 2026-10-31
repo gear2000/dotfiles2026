@@ -49,7 +49,6 @@
       "gh"
       "go"
       "helm"
-      "herdr"
       "infracost"
       "just"
       "kubie"
